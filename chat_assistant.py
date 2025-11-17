@@ -15,7 +15,7 @@ from finance_logic import calculate_german_income_tax, RECOMMENDED_PCT
 #   🔑 DIRECT API KEY MODE — PASTE YOUR OPENAI API KEY BELOW
 # ================================================================
 
-OPENAI_API_KEY = "api key should be here"
+OPENAI_API_KEY = ""
 
 OPENAI_ENABLED = len(OPENAI_API_KEY) > 0
 client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_ENABLED else None

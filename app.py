@@ -23,7 +23,8 @@ st.write(
 )
 
 if OPENAI_ENABLED:
-    st.success("✅ OpenAI is enabled. The chat assistant will use the OpenAI API.")
+    st.success("✅ For further guidence you can ask also"
+    ".")
 else:
     st.info(
         "ℹ️ OpenAI API key not found. The chat assistant will use a simple built-in logic.\n\n"
