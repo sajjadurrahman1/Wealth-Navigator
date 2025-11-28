@@ -2,6 +2,7 @@
 
 import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt  # 👈 added for pie chart
 
 from finance_logic import compute_financials, RECOMMENDED_PCT
 from chat_assistant import generate_bot_reply, OPENAI_ENABLED
@@ -22,14 +23,7 @@ st.write(
     "not professional tax or financial advice._"
 )
 
-if OPENAI_ENABLED:
-    st.success("✅ For further guidence you can ask also"
-    ".")
-else:
-    st.info(
-        "ℹ️ OpenAI API key not found. The chat assistant will use a simple built-in logic.\n\n"
-        "Set the `OPENAI_API_KEY` environment variable to enable OpenAI."
-    )
+
 
 # ---------- SIDEBAR INPUTS ----------
 st.sidebar.header("📥 Your monthly details")
@@ -192,16 +186,25 @@ if analyze:
                         "- Extend the time frame for your goal"
                     )
 
-        # ----- EXPENDITURE GRAPH (BAR CHART) -----
+        # ----- EXPENDITURE GRAPH (PIE CHART) -----
         st.write("---")
-        st.subheader("📉 Your spending by category (vs. net income)")
+        st.subheader("📉 Your spending by category (percentage of total expenses)")
 
         df_expenses = pd.DataFrame(
             {"Category": list(expenses.keys()), "Amount": list(expenses.values())}
         ).set_index("Category")
 
         if ctx["total_expenses"] > 0:
-            st.bar_chart(df_expenses)
+            # Pie chart of expenses as % of total
+            fig, ax = plt.subplots()
+            ax.pie(
+                df_expenses["Amount"],
+                labels=df_expenses.index,
+                autopct="%1.1f%%",
+                startangle=90,
+            )
+            ax.axis("equal")  # Equal aspect ratio ensures pie is drawn as a circle.
+            st.pyplot(fig)
         else:
             st.info("You haven't entered any expenses yet. Add some amounts in the sidebar.")
 
@@ -271,30 +274,6 @@ if analyze:
                     "Based on these rough guidelines, none of your categories look **massively** out of control. "
                     "You can still adjust them depending on your personal priorities."
                 )
-
-        # ----- TAX CLASS COMPARISON (TABLE + BAR CHART) -----
-        st.write("---")
-        st.subheader("🇩🇪 Tax comparison across all classes (simplified)")
-
-        tax_table_rows = []
-        for cls, tax_value in ctx["tax_per_class"].items():
-            cls_net = ctx["gross_income"] - tax_value
-            tax_table_rows.append({
-                "Tax Class": cls,
-                "Estimated Tax / Month": round(tax_value, 2),
-                "Net Income / Month": round(cls_net, 2),
-            })
-
-        df_tax = pd.DataFrame(tax_table_rows).set_index("Tax Class")
-        st.write("#### 💶 Estimated monthly tax & net income per Steuerklasse")
-        st.dataframe(df_tax.style.format({
-            "Estimated Tax / Month": f"{currency}{{:,.2f}}",
-            "Net Income / Month": f"{currency}{{:,.2f}}",
-        }))
-
-        st.write("#### 📊 Tax per class (bar chart)")
-        df_tax_chart = pd.DataFrame({"Tax / Month": ctx["tax_per_class"]})
-        st.bar_chart(df_tax_chart)
 
 else:
     st.info("➡️ Enter your numbers on the left, then click **Analyze my situation 💡**.")
