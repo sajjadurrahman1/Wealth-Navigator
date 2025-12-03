@@ -81,9 +81,10 @@ for cat in expense_categories:
         step=50.0,
         value=0.0,
     )
+st.sidebar.write("### ▶️ When you're ready")
+analyze = st.sidebar.button("Analyze my situation 💡")
 
-st.write("### ▶️ When you're ready, analyze your budget + tax")
-analyze = st.button("Analyze my situation 💡")
+
 
 # ---------- MAIN ANALYSIS ----------
 if analyze:
