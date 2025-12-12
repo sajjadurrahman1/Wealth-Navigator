@@ -1,35 +1,29 @@
 """
-Chat assistant logic using:
-- OpenAI (if API key is provided), OR
-- A simple rule-based fallback.
+Chat assistant logic:
+- Uses OpenAI if an API key is provided
+- Otherwise falls back to a simple rule-based assistant
 
-This file stays clean and focused on chat functions only.
+Keep this file focused on chat behavior (no Streamlit UI here).
 """
 
 from openai import OpenAI
 from finance_logic import calculate_german_income_tax, RECOMMENDED_PCT
 
-# ================================================================
-#   🔑 DIRECT API KEY MODE — PASTE YOUR OPENAI API KEY BELOW
-# ================================================================
 
+# Put your OpenAI API key here if you want AI replies
 OPENAI_API_KEY = ""
 
+# If the key is empty, we run in offline/fallback mode
 OPENAI_ENABLED = len(OPENAI_API_KEY) > 0
 client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_ENABLED else None
 
-# ================================================================
-#   RULE-BASED FALLBACK ASSISTANT
-# ================================================================
 
 def generate_rule_based_reply(user_message: str, ctx: dict) -> str:
-    """
-    Simple fallback AI if no OpenAI key is provided.
-    """
+    """Simple offline assistant for common finance questions."""
     text = user_message.lower()
     currency = ctx.get("currency", "€")
 
-    # --- Savings goal ---
+    # Savings goal questions
     if "goal" in text or ("save" in text and "month" in text):
         if ctx["goal_amount"] <= 0:
             return "Please add a savings goal amount in the sidebar and ask again."
@@ -51,7 +45,7 @@ def generate_rule_based_reply(user_message: str, ctx: dict) -> str:
             msg += "You are saving enough to reach the goal 🎉"
         return msg
 
-    # --- Budget summary ---
+    # Budget summary / overview
     if "summary" in text or "budget" in text or "overview" in text:
         summary = [
             f"Gross income: {currency}{ctx['gross_income']:,.0f}",
@@ -62,12 +56,14 @@ def generate_rule_based_reply(user_message: str, ctx: dict) -> str:
         ]
         return "\n".join(summary)
 
-    # --- Overspending analysis ---
+    # Overspending / improvement tips
     if "reduce" in text or "overspend" in text or "improve" in text:
         tips = []
         for cat, amount in ctx["expenses"].items():
             pct = amount / ctx["net_income"] if ctx["net_income"] > 0 else 0
             rec_pct = RECOMMENDED_PCT.get(cat, 0.10)
+
+            # Add a tip only if they are clearly above the guideline
             if pct > rec_pct + 0.05:
                 tips.append(
                     f"- {cat}: You spend {pct*100:.1f}% (recommended ~{rec_pct*100:.0f}%)."
@@ -75,23 +71,21 @@ def generate_rule_based_reply(user_message: str, ctx: dict) -> str:
 
         if tips:
             return "Areas to improve:\n\n" + "\n".join(tips)
-        else:
-            return "Nothing looks drastically overspent, but you can still fine-tune."
+        return "Nothing looks drastically overspent, but you can still fine-tune."
 
-    # --- Tax questions ---
+    # Tax / Steuerklasse questions
     if "tax" in text or "steuer" in text or "class" in text:
         base_tax = calculate_german_income_tax(ctx["gross_income"])
-        msg = (
-            f"Here’s a rough tax breakdown:\n"
+        return (
+            "Here’s a rough tax breakdown:\n"
             f"- Gross: {currency}{ctx['gross_income']:,.0f}\n"
             f"- Base tax (no class): {currency}{base_tax:,.0f}\n"
-            f"- Tax class {ctx['selected_tax_class']} estimate: "
-            f"{currency}{ctx['estimated_tax_selected']:,.0f}\n"
+            f"- Tax class {ctx['selected_tax_class']} estimate: {currency}{ctx['estimated_tax_selected']:,.0f}\n"
             f"- Net income: {currency}{ctx['net_income']:,.0f}\n\n"
             "This is simplified for educational use."
         )
-        return msg
 
+    # Default help message when nothing matched
     return (
         "I can help with:\n"
         "- Budget summary\n"
@@ -101,47 +95,34 @@ def generate_rule_based_reply(user_message: str, ctx: dict) -> str:
         "Try asking: *Where am I overspending?*"
     )
 
-# ================================================================
-#   OPENAI-POWERED ASSISTANT (CONCISE, NOT TEACHER-LIKE)
-# ================================================================
 
 def generate_openai_reply(user_message: str, ctx: dict, history: list) -> str:
     """
-    Uses OpenAI to generate a concise financial answer using user context.
-    Default: short and practical, not like a teacher.
-    Only show detailed calculations if the user explicitly asks.
+    Uses OpenAI to generate a reply using the user's financial context.
+
+    By default we keep answers short and practical.
+    If the user asks for steps / formulas, we switch to a detailed explanation.
     """
-
     currency = ctx.get("currency", "€")
-
-    # Decide whether the user explicitly wants detailed steps/calculations
     text = user_message.lower()
+
+    # Check if the user wants the math and steps
     wants_detail = any(
         kw in text
         for kw in [
             "show the calculation",
             "show calculation",
-            "calculate step by step",
-            "step by step",
-            "explain in detail",
-            "why is that",
+            "how did you calculate",
             "how did you get this",
+            "how did you get that",
+            "step by step",
+            "explain the calculation",
+            "explain in detail",
             "formula",
         ]
     )
 
-    detail_instruction = (
-        "User did NOT ask for detailed calculations. "
-        "Answer in a compact way (max 3–5 short sentences). "
-        "Do NOT show formulas, intermediate math steps, or long explanations. "
-        "Give 1–3 clear, practical suggestions only."
-        if not wants_detail
-        else
-        "User explicitly wants detailed calculations or steps. "
-        "You may show formulas and step-by-step reasoning, but still stay focused and clear."
-    )
-
-    # Build financial snapshot for the model
+    # A short "snapshot" of the current financial situation for the model
     snapshot = "\n".join(
         [
             f"Currency: {currency}",
@@ -149,7 +130,7 @@ def generate_openai_reply(user_message: str, ctx: dict, history: list) -> str:
             f"Net income: {ctx['net_income']}",
             f"Tax class: {ctx['selected_tax_class']}",
             f"Tax: {ctx['estimated_tax_selected']}",
-            f"Expenses: {ctx['total_expenses']}",
+            f"Expenses total: {ctx['total_expenses']}",
             f"Savings: {ctx['savings']}",
             f"Savings rate (% of net): {ctx['savings_rate']}",
             f"Goal amount: {ctx['goal_amount']}",
@@ -157,55 +138,62 @@ def generate_openai_reply(user_message: str, ctx: dict, history: list) -> str:
         ]
     )
 
+    # Tell the model how to respond (short by default, detailed when requested)
+    if wants_detail:
+        style_instructions = (
+            "User wants to see the calculation.\n"
+            "Show formulas and intermediate steps, then the final result.\n"
+            "Be structured and accurate."
+        )
+    else:
+        style_instructions = (
+            "Answer in a compact, practical way (2–4 short sentences).\n"
+            "No formulas or step-by-step math unless the user asked for it.\n"
+            "Give 1–3 concrete suggestions."
+        )
+
     messages = [
         {
             "role": "system",
             "content": (
-                "You are a concise, practical personal finance assistant for users in Germany.\n"
-                "Use only the user's financial snapshot and their question.\n"
-                "Default behaviour:\n"
-                "- No lecture tone and no generic life advice.\n"
-                "- No long explanations, keep it short and to the point.\n"
-                "- If information is missing or uncertain, say so briefly.\n"
-                "- Focus on what the user should do next, not on teaching theory."
+                "You are a personal finance assistant for users living in Germany. "
+                "Use the snapshot and the user's question to answer in a helpful way."
             ),
         },
-        {
-            "role": "system",
-            "content": "User financial snapshot:\n" + snapshot,
-        },
-        {
-            "role": "system",
-            "content": detail_instruction,
-        },
+        {"role": "system", "content": "User financial snapshot:\n" + snapshot},
+        {"role": "system", "content": style_instructions},
     ]
 
-    # Add last few chat messages to maintain conversation
+    # Keep a little bit of chat history so the assistant stays consistent
     for msg in history[-5:]:
         messages.append({"role": msg["role"], "content": msg["content"]})
 
-    messages.append({"role": "user", "content": user_message})
+    # If they want details, nudge the model once more in the user message
+    if wants_detail:
+        user_content = (
+            user_message
+            + "\n\nPlease show the formula and each step you use."
+        )
+    else:
+        user_content = user_message
+
+    messages.append({"role": "user", "content": user_content})
 
     try:
         response = client.chat.completions.create(
             model="gpt-4.1-mini",
             messages=messages,
-            temperature=0.2,  # lower temp = less rambling
+            temperature=0.2,
         )
         return response.choices[0].message.content
 
     except Exception as e:
+        # If OpenAI fails, return an error message so the user knows what happened
         return f"OpenAI error: {e}\nFalling back to offline assistant."
 
-# ================================================================
-#   SELECT BETWEEN OPENAI OR RULE-BASED
-# ================================================================
 
 def generate_bot_reply(user_message: str, ctx: dict, history: list) -> str:
-    """
-    Routes the query to OpenAI or to the rule-based fallback.
-    """
+    """Pick OpenAI when available, otherwise use the offline assistant."""
     if OPENAI_ENABLED and client is not None:
         return generate_openai_reply(user_message, ctx, history)
-    else:
-        return generate_rule_based_reply(user_message, ctx)
+    return generate_rule_based_reply(user_message, ctx)
