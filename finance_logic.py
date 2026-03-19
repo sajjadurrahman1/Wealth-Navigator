@@ -21,6 +21,10 @@ def calculate_german_income_tax(monthly_income: float) -> float:
 
     This is intentionally simplified for demo/education.
     """
+    # Input validation
+    if monthly_income < 0:
+        return 0.0
+    
     annual_income = monthly_income * 12
 
     # Basic allowance (very rough)
@@ -76,10 +80,24 @@ def compute_financials(
     Compute the key values the UI and chatbot need:
     tax estimate, net income, savings, goal math, and per-tax-class comparison.
     """
+    # Input validation
+    if gross_income < 0:
+        gross_income = 0.0
+    if goal_amount < 0:
+        goal_amount = 0.0
+    if goal_months < 1:
+        goal_months = 1
+    if not isinstance(expenses, dict):
+        expenses = {}
+    
+    # Ensure all expense values are non-negative
+    expenses = {k: max(0.0, float(v)) if isinstance(v, (int, float)) else 0.0 
+                for k, v in expenses.items()}
+    
     # Tax + net income estimate
     base_tax = calculate_german_income_tax(gross_income)
     estimated_tax_selected = apply_tax_class_modifier(base_tax, selected_tax_class)
-    net_income = gross_income - estimated_tax_selected
+    net_income = max(0.0, gross_income - estimated_tax_selected)  # Ensure non-negative
 
     # Expense totals + savings
     total_expenses = sum(expenses.values())
