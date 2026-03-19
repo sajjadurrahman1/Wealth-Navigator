@@ -1,327 +1,207 @@
-💶 Wealth Navigator
-A Retrieval-Augmented Personal Finance Assistant for Germany
+# 💶 Wealth Navigator  
+**A Retrieval-Augmented Personal Finance Assistant for Germany**
 
-Wealth Navigator is an explainable, retrieval-augmented personal finance assistant designed for users living in Germany.
-It combines deterministic financial calculations, conversational AI, persistent memory, and document-grounded responses to help users understand their income, taxes, expenses, and savings goals in a transparent and trustworthy way.
+Wealth Navigator is an **explainable, retrieval-augmented personal finance assistant** designed for users living in Germany.  
+It combines deterministic financial calculations, conversational AI, persistent memory, and document-grounded responses to help users understand their income, taxes, expenses, and savings goals in a **transparent and trustworthy way**.
 
+---
 
-📌 Key Features
+## 📌 Key Features
 
-🇩🇪 Germany-specific finance logic
+### 🇩🇪 Germany-Specific Finance Logic
+- Simplified German income tax estimation  
+- Support for all **Steuerklassen (I–VI)**  
 
-Simplified German income tax estimation
+### 📊 Budget & Savings Analysis
+- Net income calculation  
+- Expense breakdown & savings rate  
+- Savings goal feasibility checks  
 
-Support for all Steuerklassen (I–VI)
+### 💬 Conversational Assistant
+- Ask questions about spending, taxes, goals, and budgeting  
+- Maintains conversation context  
 
-📊 Budget & Savings Analysis
+### 📚 Retrieval-Augmented Generation (RAG)
+- Answers grounded in financial PDF documents  
+- Page-level citations *(Book + page number)*  
 
-Net income calculation
+### 🧠 Persistent Memory
+- SQLite-based storage for chats and user preferences  
+- Multi-chat support *(create, rename, delete chats)*  
 
-Expense breakdown & savings rate
+### 🧮 Agent Tools for Accuracy
+- **Calculator Agent** (step-by-step math)  
+- **Currency Converter Agent** (live + cached rates)  
 
-Savings goal feasibility checks
+### 📴 Offline-First Design
+- Rule-based fallback when OpenAI or RAG is unavailable  
 
-💬 Conversational Assistant
+---
 
-Ask questions about spending, taxes, goals, and budgeting
+## 🏗️ System Architecture
 
-Maintains conversation context
+The project follows a **modular layered architecture**:
 
-📚 Retrieval-Augmented Generation (RAG)
+---
 
-Answers grounded in financial PDF documents
-
-Page-level citations (Book + page number)
-
-🧠 Persistent Memory
-
-SQLite-based storage for chats and user preferences
-
-Multi-chat support (create, rename, delete chats)
-
-🧮 Agent Tools for Accuracy
-
-Calculator Agent (step-by-step math)
-
-Currency Converter Agent (live + cached rates)
-
-📴 Offline-First Design
-
-Rule-based fallback when OpenAI or RAG is unavailable
-
-
-🏗️ System Architecture
-
-The project follows a modular layered architecture
-Streamlit UI
-   ↓
-Chat Assistant Controller
-   ↓
-Finance Logic  ←→  Calculator Agent
-   ↓
-RAG Pipeline (FAISS + PDFs)
-   ↓
-SQLite Memory Store
-
+## 📁 Project Structure
 wealth-navigator/
 │
-├── app.py                      # Streamlit frontend (UI + chat interface)
-│
-├── finance_logic.py            # Deterministic finance calculations
-│
-├── chat_assistant.py           # Chat orchestration, RAG, agents, fallback logic
-│
-├── memory_store.py             # SQLite-based persistent memory
-│
-├── calculator_agent.py         # Exact arithmetic & financial calculations
-│
+├── app.py # Streamlit frontend (UI + chat interface)
+├── finance_logic.py # Deterministic finance calculations
+├── chat_assistant.py # Chat orchestration, RAG, agents, fallback logic
+├── memory_store.py # SQLite-based persistent memory
+├── calculator_agent.py # Exact arithmetic & financial calculations
 ├── currency_converter_agent.py # Live & cached currency conversion
 │
 ├── rag/
-│   ├── ingest_pdfs.py          # PDF ingestion & FAISS index creation
-│   ├── rag_query.py            # Vector search over indexed documents
-│   └── data/
-│       ├── pdfs/               # Financial PDF sources
-│       ├── faiss.index         # FAISS vector index
-│       └── metadata.jsonl      # Chunk metadata (source, page, text)
+│ ├── ingest_pdfs.py # PDF ingestion & FAISS index creation
+│ ├── rag_query.py # Vector search over indexed documents
+│ └── data/
+│ ├── pdfs/ # Financial PDF sources
+│ ├── faiss.index # FAISS vector index
+│ └── metadata.jsonl # Chunk metadata (source, page, text)
 │
 ├── requirements.txt
 └── README.md
 
+---
 
-🧮 Finance Logic Overview (finance_logic.py)
+## 🧮 Finance Logic Overview (`finance_logic.py`)
 
-Converts monthly income → annual income
+- Converts **monthly income → annual income**  
+- Applies simplified **progressive tax brackets**  
+- Adjusts tax using **Steuerklasse modifiers**  
 
-Applies simplified progressive tax brackets
+### Computes:
+- Net income  
+- Total expenses  
+- Savings & savings rate  
+- Required monthly savings for goals  
 
-Adjusts tax using Steuerklasse modifiers
+- Uses **rule-of-thumb budget guidelines** for analysis  
 
-Computes:
+> ⚠️ **Note:** Tax logic is simplified and intended for educational purposes only.
 
-Net income
+---
 
-Total expenses
-
-Savings & savings rate
-
-Required monthly savings for goals
-
-Uses rule-of-thumb budget guidelines for analysis
-
-⚠️ Note: Tax logic is simplified and intended for educational purposes only.
-
-
-💬 Chat Assistant Logic (chat_assistant.py)
+## 💬 Chat Assistant Logic (`chat_assistant.py`)
 
 The assistant operates in three modes:
 
-OpenAI Mode
+### 1. OpenAI Mode
+- Short, practical answers by default  
+- Detailed step-by-step explanations on request  
 
-Short, practical answers by default
+### 2. RAG Mode (Additive)
+- Retrieves relevant PDF excerpts using FAISS  
+- Injects them into prompts with enforced citations  
 
-Detailed step-by-step explanations on request
+### 3. Rule-Based Offline Mode
+- Ensures the app works without external APIs  
 
-RAG Mode (Additive)
+### 🔒 Built-in Guardrails
+- Deterministic finance calculations  
+- Tool-based math and currency conversion  
+- Citation enforcement *(no invented sources)*  
+- Automatic fallback if APIs fail  
 
-Retrieves relevant PDF excerpts using FAISS
+---
 
-Injects them into prompts with enforced citations
+## 📚 Retrieval-Augmented Generation (RAG)
 
-Rule-Based Offline Mode
+### Pipeline
 
-Ensures the app works without external APIs
+1. Extract text from PDFs *(page-wise)*  
+2. Clean and normalize text  
+3. Chunk text with overlap  
+4. Generate embeddings using `all-MiniLM-L6-v2`  
+5. Store vectors in FAISS  
+6. Retrieve top-k chunks at query time  
 
-Built-in Guardrails
+### Example Citation
 
-Deterministic finance calculations
+---
 
-Tool-based math and currency conversion
+## 🧠 Memory & Multi-Chat Support (`memory_store.py`)
 
-Citation enforcement (no invented sources)
+- SQLite-backed storage  
 
-Automatic fallback if APIs fail
+### Stores:
+- Conversations  
+- Messages  
+- Long-term user preferences  
 
+### Features:
+- Multi-chat UI  
+- Rename / delete chats  
+- Clear inputs vs clear memory  
+- Optional TTL expiration  
 
-📚 Retrieval-Augmented Generation (RAG)
-Pipeline
+> ✅ All data is stored locally to protect user privacy.
 
-Extract text from PDFs (page-wise)
+---
 
-Clean and normalize text
+## 🧮 Agent Tools
 
-Chunk text with overlap
+### Calculator Agent
+- Exact arithmetic  
+- Savings rate  
+- Required savings  
+- Tax estimation  
+- Time-to-goal  
+- Step-by-step explanations  
 
-Generate embeddings using all-MiniLM-L6-v2
+### Currency Converter Agent
+- Live exchange rates *(cached)*  
+- Fallback rates if API unavailable  
 
-Store vectors in FAISS
+### Supports:
+- Individual amounts  
+- Full financial summaries  
 
-Retrieve top-k chunks at query time
-
-Each response can include citations like:
-
-[FinanceBook.pdf p.42]
-
-
-🧠 Memory & Multi-Chat Support (memory_store.py)
-
-SQLite-backed storage
-
-Stores:
-
-Conversations
-
-Messages
-
-Long-term user preferences
-
-Features:
-
-Multi-chat UI
-
-Rename / delete chats
-
-Clear inputs vs clear memory
-
-Optional TTL expiration for stored data
-
-All data is stored locally to protect user privacy.
-🧮 Agent Tools
-Calculator Agent
-
-Exact arithmetic
-
-Savings rate
-
-Required savings
-
-Tax estimation
-
-Time-to-goal
-
-Step-by-step explanations
-
-Currency Converter Agent
-
-Live exchange rates (cached)
-
-Fallback rates if API unavailable
-
-Converts:
-
-Individual amounts
-
-Full financial summaries
-
-🧠 Memory & Multi-Chat Support (memory_store.py)
-
-SQLite-backed storage
-
-Stores:
-
-Conversations
-
-Messages
-
-Long-term user preferences
-
-Features:
-
-Multi-chat UI
-
-Rename / delete chats
-
-Clear inputs vs clear memory
-
-Optional TTL expiration for stored data
-
-All data is stored locally to protect user privacy.
-Example:
-
+**Example:**
 convert 100 EUR to USD
 
-🧮 Agent Tools
-Calculator Agent
+---
 
-Exact arithmetic
+## 🚀 Getting Started
 
-Savings rate
-
-Required savings
-
-Tax estimation
-
-Time-to-goal
-
-Step-by-step explanations
-
-Currency Converter Agent
-
-Live exchange rates (cached)
-
-Fallback rates if API unavailable
-
-Converts:
-
-Individual amounts
-
-Full financial summaries
-
-Example:
-
-convert 100 EUR to USD
-
-🚀 Getting Started
-1️⃣ Install Dependencies
+### 1️⃣ Install Dependencies
+```bash
 pip install -r requirements.txt
-
-2️⃣ (Optional) Build RAG Index
 python rag/ingest_pdfs.py
+## ⚠️ Limitations
 
-3️⃣ Run the App
-streamlit run app.py
+- Simplified German tax model *(no social contributions, Kirchensteuer, etc.)*  
+- No OCR support for scanned PDFs  
+- Exchange rates depend on a public API  
+- Not intended as legal or financial advice  
 
-4️⃣ (Optional) Enable OpenAI
+---
 
-Set your API key as an environment variable:
+## 🔮 Future Improvements
 
-export OPENAI_API_KEY="your_api_key_here"
+- More realistic German net salary calculations  
+- OCR integration for scanned documents  
+- Investment & retirement planning  
+- Cloud deployment with authentication  
+- PDF / CSV export of financial reports  
 
-⚠️ Limitations
+---
 
-Simplified German tax model (no social contributions, Kirchensteuer, etc.)
+## 🎓 Academic Context
 
-No OCR support for scanned PDFs
+This project was developed as a **Capstone Project**, demonstrating:
 
-Exchange rates depend on a public API
+- Explainable AI  
+- Retrieval-Augmented Generation  
+- Guardrails for high-risk domains (finance)  
+- Robust system design with offline fallback  
 
-Not intended as legal or financial advice
+---
 
-🔮 Future Improvements
+## 👥 Authors
 
-More realistic German net salary calculations
-
-OCR integration for scanned documents
-
-Investment & retirement planning
-
-Cloud deployment with authentication
-
-PDF / CSV export of financial reports
-
-🎓 Academic Context
-
-This project was developed as a Capstone Project, demonstrating:
-
-Explainable AI
-
-Retrieval-Augmented Generation
-
-Guardrails for high-risk domains (finance)
-
-Robust system design with offline fallback
-
-👥 Authors
-
-Sajjadur Rahman
-Tanjid Tonmoy
+- **Sajjadur Rahman**  
+- **Tanjid Tonmoy**  
