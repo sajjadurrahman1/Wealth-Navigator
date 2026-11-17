@@ -1,207 +1,167 @@
-# 💶 Wealth Navigator  
-**A Retrieval-Augmented Personal Finance Assistant for Germany**
+# Wealth Navigator - Personal Finance Assistant for Germany
 
-Wealth Navigator is an **explainable, retrieval-augmented personal finance assistant** designed for users living in Germany.  
-It combines deterministic financial calculations, conversational AI, persistent memory, and document-grounded responses to help users understand their income, taxes, expenses, and savings goals in a **transparent and trustworthy way**.
+Wealth Navigator is a Streamlit web app that helps people living in Germany understand their budget, estimated income tax, savings rate and savings goals. It combines deterministic finance calculations with a chat assistant powered by OpenAI, and it keeps working with a rule-based offline assistant when no API key is available.
 
----
+Note: the tax model is simplified and for educational purposes only. It is not financial or legal advice.
 
-## 📌 Key Features
+## Team
 
-### 🇩🇪 Germany-Specific Finance Logic
-- Simplified German income tax estimation  
-- Support for all **Steuerklassen (I–VI)**  
+Wealth Navigator was developed as a capstone project at the Hamburg University of Applied Sciences (HAW Hamburg).
 
-### 📊 Budget & Savings Analysis
-- Net income calculation  
-- Expense breakdown & savings rate  
-- Savings goal feasibility checks  
-
-### 💬 Conversational Assistant
-- Ask questions about spending, taxes, goals, and budgeting  
-- Maintains conversation context  
-
-### 📚 Retrieval-Augmented Generation (RAG)
-- Answers grounded in financial PDF documents  
-- Page-level citations *(Book + page number)*  
-
-### 🧠 Persistent Memory
-- SQLite-based storage for chats and user preferences  
-- Multi-chat support *(create, rename, delete chats)*  
-
-### 🧮 Agent Tools for Accuracy
-- **Calculator Agent** (step-by-step math)  
-- **Currency Converter Agent** (live + cached rates)  
-
-### 📴 Offline-First Design
-- Rule-based fallback when OpenAI or RAG is unavailable  
+| Role | Name |
+|---|---|
+| Team member | Sajjadur Rahman ([GitHub](https://github.com/sajjadurrahman1)) |
+| Team member | Tanjid Tonmoy |
+| Supervising professor | Sailesh Conjeti |
 
 ---
 
-## 🏗️ System Architecture
+## Features
 
-The project follows a **modular layered architecture**:
-
----
-
-## 📁 Project Structure
-wealth-navigator/
-│
-├── app.py # Streamlit frontend (UI + chat interface)
-├── finance_logic.py # Deterministic finance calculations
-├── chat_assistant.py # Chat orchestration, RAG, agents, fallback logic
-├── memory_store.py # SQLite-based persistent memory
-├── calculator_agent.py # Exact arithmetic & financial calculations
-├── currency_converter_agent.py # Live & cached currency conversion
-│
-├── rag/
-│ ├── ingest_pdfs.py # PDF ingestion & FAISS index creation
-│ ├── rag_query.py # Vector search over indexed documents
-│ └── data/
-│ ├── pdfs/ # Financial PDF sources
-│ ├── faiss.index # FAISS vector index
-│ └── metadata.jsonl # Chunk metadata (source, page, text)
-│
-├── requirements.txt
-└── README.md
+- **Budget and tax analysis:** enter monthly gross income and a tax class (Steuerklasse I to VI) to get an estimated tax, net income, total expenses, savings and savings rate.
+- **Savings goals:** enter a goal amount and a timeframe in months to see the monthly savings required.
+- **Spending breakdown:** pie chart of six expense categories (housing, food, transport, utilities, entertainment, shopping and other), compared with rule-of-thumb budget percentages.
+- **Chat assistant:** ask questions about your spending, taxes and goals. The assistant receives a snapshot of your numbers, answers briefly by default and shows step-by-step calculations when asked.
+- **Offline fallback:** if no API key is set or the OpenAI call fails, a rule-based assistant answers instead. It handles questions such as "where do I spend the most", simple arithmetic ("add 100 and 50") and currency conversion ("convert 100 EUR to USD").
+- **Currency conversion:** live exchange rates from a public API, cached for one hour, with built-in approximate rates as a fallback.
+- **Optional document-grounded answers (RAG):** the code can index finance PDFs with FAISS and cite sources as `[Book.pdf p.12]`. This needs extra setup (see "Optional: RAG with your own PDFs").
 
 ---
 
-## 🧮 Finance Logic Overview (`finance_logic.py`)
+## How It Works
 
-- Converts **monthly income → annual income**  
-- Applies simplified **progressive tax brackets**  
-- Adjusts tax using **Steuerklasse modifiers**  
+```
+app.py                     Streamlit interface: sidebar inputs, metrics, pie chart, chat
+   |
+   +-- finance_logic.py    Simplified German tax estimate, tax-class modifiers,
+   |                       budget percentages, savings and goal calculations
+   |
+   +-- chat_assistant.py   Chat logic
+         |                   1. build a snapshot of the user's numbers
+         |                   2. OpenAI mode: gpt-4o-mini (temperature 0.2) with the snapshot,
+         |                      style instructions and the last 6 messages
+         |                   3. optional RAG context from FAISS, with source citations
+         |                   4. on any failure or missing key: rule-based fallback
+         |
+         +-- calculator_agent.py          Exact finance calculations (9 functions)
+         +-- currency_converter_agent.py  Currency conversion (3 functions), cached rates
+         +-- rag_query.py / ingest_pdfs.py  Optional RAG (all-MiniLM-L6-v2 + FAISS)
 
-### Computes:
-- Net income  
-- Total expenses  
-- Savings & savings rate  
-- Required monthly savings for goals  
+memory_store.py            SQLite storage module for chats and preferences
+                           (present in the repository, not yet connected to the UI)
+```
 
-- Uses **rule-of-thumb budget guidelines** for analysis  
-
-> ⚠️ **Note:** Tax logic is simplified and intended for educational purposes only.
-
----
-
-## 💬 Chat Assistant Logic (`chat_assistant.py`)
-
-The assistant operates in three modes:
-
-### 1. OpenAI Mode
-- Short, practical answers by default  
-- Detailed step-by-step explanations on request  
-
-### 2. RAG Mode (Additive)
-- Retrieves relevant PDF excerpts using FAISS  
-- Injects them into prompts with enforced citations  
-
-### 3. Rule-Based Offline Mode
-- Ensures the app works without external APIs  
-
-### 🔒 Built-in Guardrails
-- Deterministic finance calculations  
-- Tool-based math and currency conversion  
-- Citation enforcement *(no invented sources)*  
-- Automatic fallback if APIs fail  
+**Tax model:** the monthly income is converted to an annual figure, a simplified progressive scheme is applied (tax-free allowance up to EUR 11,604, 20 % band, 42 % band, 45 % top rate), and the result is adjusted by a simple factor per tax class. It does not include social contributions or church tax.
 
 ---
 
-## 📚 Retrieval-Augmented Generation (RAG)
+## Tech Stack
 
-### Pipeline
-
-1. Extract text from PDFs *(page-wise)*  
-2. Clean and normalize text  
-3. Chunk text with overlap  
-4. Generate embeddings using `all-MiniLM-L6-v2`  
-5. Store vectors in FAISS  
-6. Retrieve top-k chunks at query time  
-
-### Example Citation
+- Python 3.9 or newer
+- Streamlit, pandas, matplotlib, numpy
+- OpenAI API (`gpt-4o-mini`)
+- requests (exchange rates)
+- Optional RAG: sentence-transformers (`all-MiniLM-L6-v2`), FAISS, pypdf
+- SQLite (memory module)
 
 ---
 
-## 🧠 Memory & Multi-Chat Support (`memory_store.py`)
+## Project Structure
 
-- SQLite-backed storage  
-
-### Stores:
-- Conversations  
-- Messages  
-- Long-term user preferences  
-
-### Features:
-- Multi-chat UI  
-- Rename / delete chats  
-- Clear inputs vs clear memory  
-- Optional TTL expiration  
-
-> ✅ All data is stored locally to protect user privacy.
-
----
-
-## 🧮 Agent Tools
-
-### Calculator Agent
-- Exact arithmetic  
-- Savings rate  
-- Required savings  
-- Tax estimation  
-- Time-to-goal  
-- Step-by-step explanations  
-
-### Currency Converter Agent
-- Live exchange rates *(cached)*  
-- Fallback rates if API unavailable  
-
-### Supports:
-- Individual amounts  
-- Full financial summaries  
-
-**Example:**
-convert 100 EUR to USD
+```
+Wealth-Navigator/
+|-- app.py                        Streamlit app
+|-- finance_logic.py              Tax, budget and savings calculations
+|-- chat_assistant.py             Chat orchestration, OpenAI, RAG hook, fallback
+|-- calculator_agent.py           Calculation tools
+|-- currency_converter_agent.py   Currency conversion tools
+|-- memory_store.py               SQLite memory module (not yet used by the UI)
+|-- rag_query.py                  Optional: search a FAISS index
+|-- ingest_pdfs.py                Optional: build the FAISS index from PDFs
+|-- requirements.txt
+`-- README.md
+```
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
-### 1️⃣ Install Dependencies
+### 1. Clone and install
+
 ```bash
+git clone https://github.com/sajjadurrahman1/Wealth-Navigator.git
+cd Wealth-Navigator
+python -m venv .venv
+source .venv/bin/activate        # macOS / Linux
+.venv\Scripts\activate           # Windows
 pip install -r requirements.txt
-python rag/ingest_pdfs.py
-## ⚠️ Limitations
+```
 
-- Simplified German tax model *(no social contributions, Kirchensteuer, etc.)*  
-- No OCR support for scanned PDFs  
-- Exchange rates depend on a public API  
-- Not intended as legal or financial advice  
+### 2. Add your OpenAI API key (optional)
 
----
+Without a key the app still runs with the rule-based assistant. To enable OpenAI answers, set the key as an environment variable or put it in a local `.env` file (already ignored by git):
 
-## 🔮 Future Improvements
+```
+OPENAI_API_KEY=sk-...
+```
 
-- More realistic German net salary calculations  
-- OCR integration for scanned documents  
-- Investment & retirement planning  
-- Cloud deployment with authentication  
-- PDF / CSV export of financial reports  
+Never write the key into the source code and never commit it.
 
----
+### 3. Run
 
-## 🎓 Academic Context
+```bash
+streamlit run app.py
+```
 
-This project was developed as a **Capstone Project**, demonstrating:
-
-- Explainable AI  
-- Retrieval-Augmented Generation  
-- Guardrails for high-risk domains (finance)  
-- Robust system design with offline fallback  
+The app opens at http://localhost:8501.
 
 ---
 
-## 👥 Authors
+## Optional: RAG with your own PDFs
 
-- **Sajjadur Rahman**  
-- **Tanjid Tonmoy**  
+The RAG code expects this layout, relative to the project root:
+
+```
+rag/
+|-- rag_query.py
+|-- ingest_pdfs.py
+`-- data/
+    |-- pdfs/            put your finance PDFs here
+    |-- faiss.index      created by the ingestion script
+    `-- metadata.jsonl   created by the ingestion script
+```
+
+1. Create the `rag/` folder and move `rag_query.py` and `ingest_pdfs.py` into it.
+2. Put your PDFs in `rag/data/pdfs/`.
+3. From the project root, run `python rag/ingest_pdfs.py`.
+4. Start the app. If the index is found, answers include citations such as `[Book.pdf p.12]`.
+
+The PDFs and the index are not included in this repository.
+
+---
+
+## Example Questions
+
+- Where am I spending the most?
+- How much do I need to save per month to reach my goal?
+- Explain how my tax was calculated, step by step.
+- convert 100 EUR to USD
+
+---
+
+## Limitations
+
+- Simplified German tax model (no social contributions, church tax or deductions).
+- The tax-class factors are a rough approximation.
+- Exchange rates depend on a public API; approximate fallback rates are used if it is unavailable.
+- RAG needs your own PDFs and a local index; scanned PDFs without text are not supported (no OCR).
+- Chat history exists only in the browser session; the SQLite memory module is not connected to the interface yet.
+- Not financial or legal advice.
+
+## Possible Improvements
+
+- Connect `memory_store.py` to the interface for persistent, multi-chat history.
+- More realistic German net salary calculation.
+- Add the RAG data folder and a small public document set.
+- OCR for scanned documents, and export of reports to PDF or CSV.
+- Investment and retirement planning.
