@@ -104,13 +104,11 @@ def retrieve_context_with_sources(query: str, top_k: int = 5) -> tuple:
 
 
 # ---------- Optional OpenAI ----------
-# If not in environment, you can set it here (not recommended for production)
-if not OPENAI_API_KEY:
-    OPENAI_API_KEY = "sk-proj-..."
+# The API key is read from an environment variable (or Streamlit secrets).
+# Never write the key into the source code.
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 
 OPENAI_ENABLED = len(OPENAI_API_KEY) > 0
-client = None
 
 if OPENAI_ENABLED:
     try:
