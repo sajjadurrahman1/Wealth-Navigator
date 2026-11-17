@@ -104,13 +104,10 @@ def retrieve_context_with_sources(query: str, top_k: int = 5) -> tuple:
 
 
 # ---------- Optional OpenAI ----------
-# Best practice: set OPENAI_API_KEY as an environment variable, not in code.
-# e.g. in terminal: export OPENAI_API_KEY="..."
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
-
 # If not in environment, you can set it here (not recommended for production)
 if not OPENAI_API_KEY:
-    OPENAI_API_KEY = "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"
+    OPENAI_API_KEY = "sk-proj-..."
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 
 OPENAI_ENABLED = len(OPENAI_API_KEY) > 0
 client = None
