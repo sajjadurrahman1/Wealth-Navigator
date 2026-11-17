@@ -1,5 +1,5 @@
 # Wealth Navigator - Personal Finance Assistant for Germany
-
+**Live demo: [Open AskHAW](https://wealth-navigator-teslqmnrpxyybegglfnynm.streamlit.app/)**
 Wealth Navigator is a Streamlit web app that helps people living in Germany understand their budget, estimated income tax, savings rate and savings goals. It combines deterministic finance calculations with a chat assistant powered by OpenAI, and it keeps working with a rule-based offline assistant when no API key is available.
 
 Note: the tax model is simplified and for educational purposes only. It is not financial or legal advice.
